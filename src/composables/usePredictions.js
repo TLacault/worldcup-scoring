@@ -9,16 +9,15 @@ function load() {
       const parsed = JSON.parse(raw)
       return {
         predictions: parsed.predictions || {},
-        results: parsed.results || {},
-        // `auto` : ids des matchs dont le score réel a été pré-rempli
-        // automatiquement (et non saisi à la main).
-        auto: parsed.auto || {}
+        // Les scores réels proviennent uniquement du flux automatique
+        // (results.json) : ils sont en lecture seule dans l'interface.
+        results: parsed.results || {}
       }
     }
   } catch (e) {
     console.warn('Impossible de lire les pronostics enregistrés :', e)
   }
-  return { predictions: {}, results: {}, auto: {} }
+  return { predictions: {}, results: {} }
 }
 
 // Store unique et réactif, partagé par toute l'app et synchronisé avec
@@ -44,31 +43,26 @@ export function usePredictions() {
 export function resetAll() {
   for (const id of Object.keys(store.predictions)) delete store.predictions[id]
   for (const id of Object.keys(store.results)) delete store.results[id]
-  for (const id of Object.keys(store.auto)) delete store.auto[id]
 }
 
-// Remplace tout le contenu (import depuis un fichier). Les scores importés
-// sont considérés comme saisis manuellement (on efface les marqueurs auto).
+// Remplace les pronostics (import depuis un fichier). Les scores réels seront
+// de toute façon réécrits par le flux automatique.
 export function replaceAll({ predictions, results } = {}) {
   for (const id of Object.keys(store.predictions)) delete store.predictions[id]
   for (const id of Object.keys(store.results)) delete store.results[id]
-  for (const id of Object.keys(store.auto)) delete store.auto[id]
   Object.assign(store.predictions, predictions || {})
   Object.assign(store.results, results || {})
 }
 
-// Applique des scores « officiels » (récupérés automatiquement). On ne touche
-// qu'aux matchs sans score manuel — ou à ceux déjà remplis automatiquement,
-// qu'on garde ainsi à jour si le score évolue.
+// Applique les scores « officiels » récupérés automatiquement.
 export function applyOfficial(official) {
   if (!official) return 0
   let n = 0
   for (const [id, score] of Object.entries(official)) {
     if (!score || !Number.isFinite(score.h) || !Number.isFinite(score.a)) continue
-    const existing = store.results[id]
-    if (!existing || store.auto[id]) {
+    const cur = store.results[id]
+    if (!cur || cur.h !== score.h || cur.a !== score.a) {
       store.results[id] = { h: score.h, a: score.a }
-      store.auto[id] = true
       n += 1
     }
   }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { groups, matches } from './data/tournament.js'
 import {
   usePredictions,
@@ -89,8 +89,15 @@ async function onImportFile(event) {
   }
 }
 
+// Récupère les scores au chargement puis périodiquement, pour suivre les
+// mises à jour publiées par le workflow GitHub sans recharger la page.
+let refreshTimer = null
 onMounted(() => {
   fetchOfficialResults()
+  refreshTimer = setInterval(fetchOfficialResults, 120000)
+})
+onBeforeUnmount(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>
 
@@ -190,8 +197,8 @@ onMounted(() => {
     </div>
 
     <p class="app-footer__note">
-      Vos saisies sont enregistrées dans ce navigateur uniquement. Les scores marqués
-      « auto » sont récupérés automatiquement et restent modifiables.
+      Vos pronostics sont enregistrés dans ce navigateur uniquement et verrouillés
+      au coup d'envoi. Les scores réels sont récupérés automatiquement.
     </p>
   </footer>
 </template>

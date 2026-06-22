@@ -18,9 +18,9 @@ const time = computed(() => formatTime(props.match.kickoff))
 const pred = computed(() => props.store.predictions[props.match.id])
 const result = computed(() => props.store.results[props.match.id])
 
+// Une fois le coup d'envoi passé, le pronostic est verrouillé.
 const started = computed(() => hasStarted(props.match.kickoff))
 const points = computed(() => matchPoints(pred.value, result.value))
-const isAuto = computed(() => !!props.store.auto?.[props.match.id])
 
 const state = computed(() => {
   if (points.value !== null) return 'played'
@@ -42,16 +42,16 @@ function read(map, side) {
   return o && Number.isFinite(o[side]) ? o[side] : ''
 }
 
-function write(map, side, raw) {
+// Saisie du pronostic uniquement (le score réel est en lecture seule).
+function writePrediction(side, raw) {
+  if (started.value) return
   const id = props.match.id
   let v = raw === '' || raw == null ? null : Math.floor(Number(raw))
   if (v !== null && (!Number.isFinite(v) || v < 0)) v = 0
-  const cur = props.store[map][id] ? { ...props.store[map][id] } : { h: null, a: null }
+  const cur = props.store.predictions[id] ? { ...props.store.predictions[id] } : { h: null, a: null }
   cur[side] = v
-  if (cur.h == null && cur.a == null) delete props.store[map][id]
-  else props.store[map][id] = cur
-  // Une saisie manuelle du score réel « débranche » le remplissage auto.
-  if (map === 'results' && props.store.auto) delete props.store.auto[id]
+  if (cur.h == null && cur.a == null) delete props.store.predictions[id]
+  else props.store.predictions[id] = cur
 }
 </script>
 
@@ -72,11 +72,11 @@ function write(map, side, raw) {
       </div>
 
       <div class="cols">
-        <span class="cols__label">Pronostic</span>
         <span class="cols__label">
-          Score réel
-          <span v-if="isAuto" class="cols__auto" title="Score récupéré automatiquement">auto</span>
+          Pronostic
+          <span v-if="started" class="cols__lock" title="Match commencé : pronostic verrouillé">🔒</span>
         </span>
+        <span class="cols__label">Score réel</span>
 
         <div class="score">
           <input
@@ -85,7 +85,8 @@ function write(map, side, raw) {
             min="0"
             inputmode="numeric"
             :value="read('predictions', 'h')"
-            @input="write('predictions', 'h', $event.target.value)"
+            :disabled="started"
+            @input="writePrediction('h', $event.target.value)"
             aria-label="Pronostic domicile"
           />
           <span class="score__sep">–</span>
@@ -95,29 +96,28 @@ function write(map, side, raw) {
             min="0"
             inputmode="numeric"
             :value="read('predictions', 'a')"
-            @input="write('predictions', 'a', $event.target.value)"
+            :disabled="started"
+            @input="writePrediction('a', $event.target.value)"
             aria-label="Pronostic extérieur"
           />
         </div>
 
         <div class="score score--result">
           <input
-            class="score__in"
+            class="score__in score__in--ro"
             type="number"
-            min="0"
-            inputmode="numeric"
             :value="read('results', 'h')"
-            @input="write('results', 'h', $event.target.value)"
+            readonly
+            tabindex="-1"
             aria-label="Score réel domicile"
           />
           <span class="score__sep">–</span>
           <input
-            class="score__in"
+            class="score__in score__in--ro"
             type="number"
-            min="0"
-            inputmode="numeric"
             :value="read('results', 'a')"
-            @input="write('results', 'a', $event.target.value)"
+            readonly
+            tabindex="-1"
             aria-label="Score réel extérieur"
           />
         </div>
