@@ -1,0 +1,47 @@
+name: Fetch scores
+
+# Récupère les scores et met à jour public/results.json.
+# Le commit déclenche ensuite le workflow "Deploy" (via workflow_run).
+#
+# Prérequis : un secret de dépôt FOOTBALL_DATA_TOKEN
+# (jeton gratuit : https://www.football-data.org/client/register).
+on:
+  schedule:
+    # Toutes les 30 min. Pendant la compétition (11-27 juin 2026) c'est utile ;
+    # hors compétition, le script ne fait que conserver le fichier existant.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Évite que deux mises à jour se chevauchent.
+concurrency:
+  group: fetch-scores
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Récupérer les scores
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+        run: node scripts/fetch-scores.mjs
+
+      - name: Commit si changement
+        run: |
+          if [[ -n "$(git status --porcelain public/results.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public/results.json
+            git commit -m "chore: mise à jour des scores"
+            git push
+          else
+            echo "Aucun changement de score."
+          fi
