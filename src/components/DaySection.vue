@@ -41,6 +41,7 @@ const stats = computed(() => tally(props.day.matches, props.store.predictions, p
         :match="m"
         :matchday="matchdays[m.id]"
         :store="store"
+        show-group
       />
     </div>
   </section>

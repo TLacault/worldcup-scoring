@@ -7,7 +7,9 @@ import { matchPoints } from '../utils/scoring.js'
 const props = defineProps({
   match: { type: Object, required: true },
   matchday: { type: Number, required: true },
-  store: { type: Object, required: true }
+  store: { type: Object, required: true },
+  // Affiche le groupe sur la carte (utile en vue « par date »).
+  showGroup: { type: Boolean, default: false }
 })
 
 const home = computed(() => getTeam(props.match.home))
@@ -18,7 +20,6 @@ const time = computed(() => formatTime(props.match.kickoff))
 const pred = computed(() => props.store.predictions[props.match.id])
 const result = computed(() => props.store.results[props.match.id])
 
-// Une fois le coup d'envoi passé, le pronostic est verrouillé.
 const started = computed(() => hasStarted(props.match.kickoff))
 const points = computed(() => matchPoints(pred.value, result.value))
 
@@ -43,8 +44,8 @@ function read(map, side) {
 }
 
 // Saisie du pronostic uniquement (le score réel est en lecture seule).
+// Le pronostic reste modifiable à tout moment (confiance, pas de triche !).
 function writePrediction(side, raw) {
-  if (started.value) return
   const id = props.match.id
   let v = raw === '' || raw == null ? null : Math.floor(Number(raw))
   if (v !== null && (!Number.isFinite(v) || v < 0)) v = 0
@@ -62,6 +63,7 @@ function writePrediction(side, raw) {
       <span class="match__dot">·</span>
       <span class="match__time">{{ time }}</span>
       <span class="match__tz">Paris</span>
+      <span v-if="showGroup" class="match__group">Gr. {{ match.group }}</span>
       <span class="match__md">J{{ matchday }}</span>
     </div>
 
@@ -72,10 +74,7 @@ function writePrediction(side, raw) {
       </div>
 
       <div class="cols">
-        <span class="cols__label">
-          Pronostic
-          <span v-if="started" class="cols__lock" title="Match commencé : pronostic verrouillé">🔒</span>
-        </span>
+        <span class="cols__label">Pronostic</span>
         <span class="cols__label">Score réel</span>
 
         <div class="score">
@@ -85,7 +84,6 @@ function writePrediction(side, raw) {
             min="0"
             inputmode="numeric"
             :value="read('predictions', 'h')"
-            :disabled="started"
             @input="writePrediction('h', $event.target.value)"
             aria-label="Pronostic domicile"
           />
@@ -96,7 +94,6 @@ function writePrediction(side, raw) {
             min="0"
             inputmode="numeric"
             :value="read('predictions', 'a')"
-            :disabled="started"
             @input="writePrediction('a', $event.target.value)"
             aria-label="Pronostic extérieur"
           />

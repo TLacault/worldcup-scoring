@@ -197,8 +197,8 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="app-footer__note">
-      Vos pronostics sont enregistrés dans ce navigateur uniquement et verrouillés
-      au coup d'envoi. Les scores réels sont récupérés automatiquement.
+      Vos pronostics sont enregistrés dans ce navigateur uniquement et modifiables
+      à tout moment. Les scores réels sont récupérés automatiquement.
     </p>
   </footer>
 </template>
